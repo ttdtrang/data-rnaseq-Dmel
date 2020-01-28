@@ -39,4 +39,4 @@ data(dmel.rnaseq.5.57)
 4. Run the R notebook `parse_metadata.Rmd` to generate `samples_metadata.RDS`.
 5. Run the R notebook `make-data-package.Rmd` to assemble parts into `ExpressionSet` objects.
 
- You may need to change some code chunk setting `eval=FALSE` into `eval=TRUE` to make sure all chunks would be run. These chunks are disabled to avoid overwriting existing data files in the folder.
+ You may need to change some code chunk setting from `eval=FALSE` to `eval=TRUE` to make sure all chunks would be run. These chunks are disabled to avoid overwriting existing data files in the folder.
