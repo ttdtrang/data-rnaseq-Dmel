@@ -1,0 +1,4 @@
+.Rproj.user
+*.Rproj
+data-raw/*csv
+data-raw/*html
