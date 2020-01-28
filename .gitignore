@@ -1,5 +1,8 @@
 .Rproj.user
 *.Rproj
-data-raw/*csv
+data-raw/*gz
 data-raw/*html
-**.nb.html
+data-raw/*html
+data-raw/*RDS
+data-raw/*rda
+
