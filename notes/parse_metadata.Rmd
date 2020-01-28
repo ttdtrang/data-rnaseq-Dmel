@@ -16,3 +16,32 @@ softfile = file.path(Sys.getenv('DBDIR'), 'GSE60314_family.soft')
 source('../R/utils.R')
 ```
 
+## Parse and process meta data
+
+```{r}
+metadata = read.soft2dataframe(softfile, entryType = 'SAMPLE', idColumnName = 'SampleId')
+sample.annotation = gsub(pattern = '\\w+\\W+(\\w+)$', replacement = '\\1', metadata$Sample_title) %>%
+    lapply(function(x) {
+        str_split(x, '_')[[1]]
+    }) %>%
+    do.call(rbind, .) %>%
+    set_colnames(c('Sex', 'Environment', 'BiologicalReplicate', "TechnicalReplicate")) %>%
+    data.frame()
+    
+sample.meta = metadata$Sample_characteristics_ch1 %>%
+    lapply(function(x) {
+        str_split(x, '\t') %>%
+            sapply(function(y) { extract.keyvalue(y, separator = ': ') })
+    }) %>%
+    do.call(rbind, .) %>%
+    data.frame() %>%
+    cbind(sample.annotation) %>%
+    cbind(metadata[,'SampleId']) %>%
+    set_names(c('Strain', 'DevelopmentalStage', 'Sex', 'Tissue', names(sample.annotation), 'SampleId')) # standardize column names
+```
+```{r,eval=FALSE}
+saveRDS(sample.meta, file = 'samples_metadata.RDS')
+```
+
+
+
