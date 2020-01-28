@@ -45,7 +45,7 @@ read.soft <-
                            recordNumber = recordNumber + 1
                            isReadingRecord = TRUE
                            records[[recordNumber]] <- list()
-                           names(entryData) = entryId
+                           names(entryData) = idColumnName
                        }
                    },
                    "!" = {

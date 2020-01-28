@@ -1,0 +1,18 @@
+---
+title: "Parsing metadata"
+author: "Trang Tran"
+date: "January 28, 2020"
+output: html_notebook
+---
+
+```{r setup, include=FALSE, echo=FALSE}
+library(magrittr)
+library(ggplot2)
+library(tidyverse)
+# Sys.setenv('DBDIR' = 'path/to/data/dir')
+options(stringsAsFactors = FALSE)
+knitr::opts_chunk$set(echo = TRUE)
+softfile = file.path(Sys.getenv('DBDIR'), 'GSE60314_family.soft')
+source('../R/utils.R')
+```
+
