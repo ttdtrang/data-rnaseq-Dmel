@@ -31,3 +31,12 @@ For the version 5.57
 data(dmel.rnaseq.5.57)
 ```
 
+## Steps to re-producing data curation
+
+1. `cd data-raw`
+2. Download the [metadata in SOFT format](ftp://ftp.ncbi.nlm.nih.gov/geo/series/GSE60nnn/GSE60314/soft/GSE60314_family.soft.gz) from GEO entry GSE60317
+3. Set the environment variable `DBDIR` to point to the path containing said file
+4. Run the R notebook `parse_metadata.Rmd` to generate `samples_metadata.RDS`.
+5. Run the R notebook `make-data-package.Rmd` to assemble parts into `ExpressionSet` objects.
+
+ You may need to change some code chunk setting `eval=FALSE` into `eval=TRUE` to make sure all chunks would be run. These chunks are disabled to avoid overwriting existing data files in the folder.
