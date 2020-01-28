@@ -16,3 +16,18 @@ library(data.rnaseq.Dmel)
 data(dmel.rnaseq)
 dim(dmel.rnaseq@assayData$exprs)
 ```
+
+The package includes 2 data sets resulted from alignment to 2 different versions of _D. melanogaster_ genome, version 5.57 and 6.01.
+
+For the version 6.01
+
+```R
+data(dmel.rnaseq)
+```
+
+For the version 5.57
+
+```R
+data(dmel.rnaseq.5.57)
+```
+
