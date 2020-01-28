@@ -1,0 +1,177 @@
+---
+title: "Create data package"
+author: "Trang Tran"
+date: "January 28, 2020"
+output: html_notebook
+---
+
+```{r setup, include=FALSE, echo=FALSE}
+library(magrittr)
+library(Biobase)
+
+options(stringsAsFactors = FALSE)
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+## Download the count matrices from GEO
+
+```{r,eval=FALSE}
+curl::curl_download('https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE60314&format=file&file=GSE60314%5F5%5F57%5FHTSeq%5Fraw%5Fread%5Fcounts%2Etxt%2Egz', './count_5_57.txt.gz')
+curl::curl_download('https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE60314&format=file&file=GSE60314%5F6%5F01%5FHTSeq%5Fraw%5Fread%5Fcounts%2Etxt%2Egz', './count_6_01.txt.gz')
+```
+
+## FlyBase Drosophila melanogaster genome 5.57
+
+### Read the count matrix
+
+```{r}
+raw.table = data.table::fread('count_5_57.txt.gz') %>%
+    data.frame()
+
+# Fix spike-ins name to the standard notation
+raw.table[,1] = gsub(pattern = '(ERCC-\\d+)\\W.*', x = raw.table[,1], replacement = '\\1' )
+raw.table[,2] = gsub(pattern = '(ERCC-\\d+)\\W.*', x = raw.table[,2], replacement = '\\1' )
+counts = raw.table[, 3:ncol(raw.table)] %>%
+    dplyr::mutate_each(as.numeric) %>%
+    as.matrix() %>%
+    set_rownames(raw.table[,1])
+```
+
+### Create `ExpressionSet`
+
+#### Assay data
+
+```{r}
+gene.assayData <- new.env()
+assign('exprs', counts, envir = gene.assayData) # exprs is required
+assign('count', counts, envir = gene.assayData)
+ExpressionSet(assayData = gene.assayData)
+```
+
+#### Phenotypic data
+
+```{r}
+metadata = readRDS('samples_metadata.RDS')
+libnames <- colnames(gene.assayData$exprs) %>% as.character()
+gene.phenoData <- data.frame('SampleId' = libnames) %>%
+    merge(y = metadata, by = 'SampleId', sort = FALSE, all.x = TRUE, all.y = FALSE)  %>% # to make sure the ordering is matched
+    set_rownames(libnames) %>%
+    Biobase::AnnotatedDataFrame(data = ., varMetadata = data.frame('labelDescription' = colnames(.), row.names = colnames(.)))
+```
+
+#### Annotations and features
+
+```{r}
+featureData <- raw.table[,1:2] %>%
+    set_names(c('ID', 'FlyBaseSymbol')) %>%
+    set_rownames(raw.table[,1])
+featureData = featureData %>%
+    Biobase::AnnotatedDataFrame(data = ., varMetadata = data.frame('labelDescription' = colnames(.), row.names = colnames(.)))
+```
+
+#### Experiment description
+
+```{r}
+experimentData <- new("MIAME",
+                      lab = "Developmental Genomics",
+                      contact = "briano@helix.nih.gov",
+                      title = "mRNA sequence data of individual Drosophila melanogaster male and female flies from 16 Drosophila Genetic Reference Panel lines reared in replicated environments",
+                      abstract = "Our primary objective was to characterize the amount of variation in transcript abundance among individual flies with identical genotypes. We also wanted to determine which analysis methods would be optimal for RNA-Seq data. To meet these objectives, we performed transcriptional profiling of whole adult individuals from 16 Drosophila Genetic Reference Panel (DGRP) lines. We quantified differential expression among genotypes, environments, and sexes.",
+                      other = list(
+                          citation = "Lin Y, Golovnina K, Chen ZX, Lee HN et al. Comparison of normalization and differential expression analyses using RNA-Seq data from 726 individual Drosophila melanogaster. BMC Genomics 2016 Jan 5;17:28. PMID: 26732976"
+                      )
+                      )
+```
+
+#### Assembling an `ExpressionSet`
+
+```{r}
+dmel.rnaseq.5.57 <- ExpressionSet(assayData = gene.assayData,
+                             phenoData = gene.phenoData,
+                             experimentData = experimentData,
+                             featureData = featureData,
+                             annotation = 'FlyBase dmel-5.57'
+                             )
+```
+
+## FlyBase Drosophila melanogaster genome 6.01
+
+### Read the count matrix
+
+```{r}
+raw.table = data.table::fread('count_6_01.txt.gz') %>%
+    data.frame()
+
+# Fix spike-ins name to the standard notation
+raw.table[,1] = gsub(pattern = '(ERCC-\\d+)\\W.*', x = raw.table[,1], replacement = '\\1' )
+raw.table[,2] = gsub(pattern = '(ERCC-\\d+)\\W.*', x = raw.table[,2], replacement = '\\1' )
+counts = raw.table[, 3:ncol(raw.table)] %>%
+    dplyr::mutate_each(as.numeric) %>%
+    as.matrix() %>%
+    set_rownames(raw.table[,1])
+```
+
+### Create `ExpressionSet`
+
+#### Assay data
+
+```{r}
+gene.assayData <- new.env()
+assign('exprs', counts, envir = gene.assayData) # exprs is required
+assign('count', counts, envir = gene.assayData)
+ExpressionSet(assayData = gene.assayData)
+```
+
+#### Phenotypic data
+
+```{r}
+metadata = readRDS('samples_metadata.RDS')
+libnames <- colnames(gene.assayData$exprs) %>% as.character()
+gene.phenoData <- data.frame('SampleId' = libnames) %>%
+    merge(y = metadata, by = 'SampleId', sort = FALSE, all.x = TRUE, all.y = FALSE)  %>% # to make sure the ordering is matched
+    set_rownames(libnames) %>%
+    Biobase::AnnotatedDataFrame(data = ., varMetadata = data.frame('labelDescription' = colnames(.), row.names = colnames(.)))
+```
+
+#### Annotations and features
+
+```{r}
+featureData <- raw.table[,1:2] %>%
+    set_names(c('ID', 'FlyBaseSymbol')) %>%
+    set_rownames(raw.table[,1])
+featureData = featureData %>%
+    Biobase::AnnotatedDataFrame(data = ., varMetadata = data.frame('labelDescription' = colnames(.), row.names = colnames(.)))
+```
+
+#### Experiment description
+
+```{r}
+experimentData <- new("MIAME",
+                      lab = "Developmental Genomics",
+                      contact = "briano@helix.nih.gov",
+                      title = "mRNA sequence data of individual Drosophila melanogaster male and female flies from 16 Drosophila Genetic Reference Panel lines reared in replicated environments",
+                      abstract = "Our primary objective was to characterize the amount of variation in transcript abundance among individual flies with identical genotypes. We also wanted to determine which analysis methods would be optimal for RNA-Seq data. To meet these objectives, we performed transcriptional profiling of whole adult individuals from 16 Drosophila Genetic Reference Panel (DGRP) lines. We quantified differential expression among genotypes, environments, and sexes.",
+                      other = list(
+                          citation = "Lin Y, Golovnina K, Chen ZX, Lee HN et al. Comparison of normalization and differential expression analyses using RNA-Seq data from 726 individual Drosophila melanogaster. BMC Genomics 2016 Jan 5;17:28. PMID: 26732976"
+                      )
+                      )
+```
+
+#### Assembling an `ExpressionSet`
+
+```{r}
+dmel.rnaseq <- ExpressionSet(assayData = gene.assayData,
+                             phenoData = gene.phenoData,
+                             experimentData = experimentData,
+                             featureData = featureData,
+                             annotation = 'FlyBase dmel-6.01'
+                             )
+```
+
+## Writing data sets
+
+```{r,eval=FALSE}
+usethis::use_data(dmel.rnaseq.5.57,internal = FALSE, overwrite = TRUE)
+usethis::use_data(dmel.rnaseq,internal = FALSE, overwrite = TRUE)
+```
