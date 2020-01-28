@@ -1,11 +1,10 @@
-# data-rnaseq-Dmel
-Data package for Drosophila melanogaster RNA-seq
+# Data package for _Drosophila melanogaster_ RNA-seq
 
 ## Sources
 
 * Original data source: [GSE60314](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE60314)
 * Original citation:
-  * Lin Y, Golovnina K, Chen ZX, Lee HN et al. Comparison of normalization and differential expression analyses using RNA-Seq data from 726 individual Drosophila melanogaster. BMC Genomics 2016 Jan 5;17:28. PMID: [26732976](https://www.ncbi.nlm.nih.gov/pubmed/26732976)
+  * Lin Y, Golovnina K, Chen ZX, Lee HN et al. Comparison of normalization and differential expression analyses using RNA-Seq data from 726 individual Drosophila melanogaster. _BMC Genomics_ 2016 Jan 5;17:28. PMID: [26732976](https://www.ncbi.nlm.nih.gov/pubmed/26732976)
   
 ## Usage
 
