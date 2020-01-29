@@ -31,7 +31,7 @@ For the version 5.57
 data(dmel.rnaseq.5.57)
 ```
 
-## Steps to re-producing data curation
+## Steps to re-produce data curation
 
 1. `cd data-raw`
 2. Download the [metadata in SOFT format](ftp://ftp.ncbi.nlm.nih.gov/geo/series/GSE60nnn/GSE60314/soft/GSE60314_family.soft.gz) from GEO entry GSE60317
