@@ -46,7 +46,7 @@ All data sets
 ## Steps to re-produce data curation
 
 1. `cd data-raw`
-2. Download the [sample metadata in SOFT format](ftp://ftp.ncbi.nlm.nih.gov/geo/series/GSE60nnn/GSE60314/soft/GSE60314_family.soft.gz) from GEO entry GSE60317
+2. Download the [sample metadata in SOFT format](ftp://ftp.ncbi.nlm.nih.gov/geo/series/GSE60nnn/GSE60314/soft/GSE60314_family.soft.gz) from GEO entry [GSE60317](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE60314)
 3. Download the [run metadata in Excel format](https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE60314&format=file&file=GSE60314%5FGEO%5Frun%5Fsummary%2Exlsx), and convert it into tab-separated text file.
 3. Set the environment variable `DBDIR` to point to the path containing said files
 4. Run the R notebook `parse_metadata.Rmd` to generate metadata files.
