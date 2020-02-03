@@ -241,6 +241,7 @@ samples.3X.78B[,c('DGRP_Number', 'Sex', 'Environment')] %>%
 ```{r,eval=FALSE}
 saveRDS(samples.3X.78A, file = 'samples.3X.78A.RDS')
 saveRDS(samples.3X.78B, file = 'samples.3X.78B.RDS')
+saveRDS(sample.meta, file = 'samples_metadata.RDS')
 ```
 
 
