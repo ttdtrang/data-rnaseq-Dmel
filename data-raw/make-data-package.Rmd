@@ -7,12 +7,49 @@ output: html_notebook
 
 ```{r setup, include=FALSE, echo=FALSE}
 library(magrittr)
+library(ggplot2)
 library(Biobase)
 
 options(stringsAsFactors = FALSE)
 knitr::opts_chunk$set(echo = TRUE)
+burd = colorRampPalette(colors = c("blue", "white", "red"))(n = 999)
+blues = colorRampPalette(colors = c("white", "blue"))(n = 300)
+plot.matrix = function(m, col = colorRampPalette(colors = c("blue", "white", "red"))(n = 999), asp=1, ...) {
+    m %>%
+        apply(MARGIN = 2, rev) %>%
+        t() %>%
+        image(useRaster = TRUE, axes = FALSE, col = col, asp = asp, ...)
+}
+project.pca <- function(X, selected.pc = c(), center = TRUE, scale = FALSE, sv_scale = FALSE) {
+    s = X %>%
+        scale(center = center, scale = scale) %>%
+        svd()
+    if (length(selected.pc) == 0) selected.pc = 1:length(s$d)
+    projected = s$u[,selected.pc]
+    if (sv_scale) {
+        projected = projected %*% diag(s$d[selected.pc])
+    }
+    data.frame(projected, row.names = rownames(X), check.names = FALSE) %>%
+        set_names(paste0('PC', selected.pc)) %>%
+        return()
+}
+
 ```
 
+## Overview
+
+```
+|-- v 5.57
+  |-- Full set: 17238 genes x 851 samples
+  |-- Selected set: samples with at least 3X coverage, 0.75 mapped reads
+    |-- ERCC pool 78A: 356 samples
+    |-- ERCC pool 78B: 247 samples
+|-- v 6.01
+  |-- Full set: 851 samples
+  |-- Selected set: samples with at least 3X coverage, 0.75 mapped reads
+    |-- ERCC pool 78A
+    |-- ERCC pool 78B
+```
 
 ## Download the count matrices from GEO
 
@@ -38,7 +75,7 @@ counts = raw.table[, 3:ncol(raw.table)] %>%
     set_rownames(raw.table[,1])
 ```
 
-### Create `ExpressionSet`
+### Create full `ExpressionSet`
 
 #### Assay data
 
@@ -87,7 +124,62 @@ experimentData <- new("MIAME",
 #### Assembling an `ExpressionSet`
 
 ```{r}
-dmel.rnaseq.5.57 <- ExpressionSet(assayData = gene.assayData,
+dmel.rnaseq.full.5.57 <- ExpressionSet(assayData = gene.assayData,
+                             phenoData = gene.phenoData,
+                             experimentData = experimentData,
+                             featureData = featureData,
+                             annotation = 'FlyBase dmel-5.57'
+                             )
+```
+
+### Create `ExpressionSet` of selected samples
+
+Samples were included if the coverage is more than 3X, and percentage of mapped reads (to genome v6.01) is greater than 0.75.
+The included samples were splitted into 2 groups, one spiked with ERCC pool 78A, the other with ERCC pool 78B.
+
+#### ERCC pool 78A
+
+```{r}
+gene.assayData <- new.env()
+metadata = readRDS('samples.3X.78A.RDS')
+metadata$SampleId = metadata$Library_ID
+
+assign('exprs', counts[,metadata$SampleId], envir = gene.assayData) # exprs is required
+assign('count', counts[,metadata$SampleId], envir = gene.assayData)
+ExpressionSet(assayData = gene.assayData)
+
+libnames <- colnames(gene.assayData$exprs) %>% as.character()
+gene.phenoData <- data.frame('SampleId' = libnames) %>%
+    merge(y = metadata, by = 'SampleId', sort = FALSE, all.x = TRUE, all.y = FALSE)  %>% # to make sure the ordering is matched
+    set_rownames(libnames) %>%
+    Biobase::AnnotatedDataFrame(data = ., varMetadata = data.frame('labelDescription' = colnames(.), row.names = colnames(.)))
+
+dmel.rnaseq.78A.5.57 <- ExpressionSet(assayData = gene.assayData,
+                             phenoData = gene.phenoData,
+                             experimentData = experimentData,
+                             featureData = featureData,
+                             annotation = 'FlyBase dmel-5.57'
+                             )
+```
+
+#### ERCC pool 78B
+
+```{r}
+gene.assayData <- new.env()
+metadata = readRDS('samples.3X.78B.RDS')
+metadata$SampleId = metadata$Library_ID
+
+assign('exprs', counts[,metadata$SampleId], envir = gene.assayData) # exprs is required
+assign('count', counts[,metadata$SampleId], envir = gene.assayData)
+ExpressionSet(assayData = gene.assayData)
+
+libnames <- colnames(gene.assayData$exprs) %>% as.character()
+gene.phenoData <- data.frame('SampleId' = libnames) %>%
+    merge(y = metadata, by = 'SampleId', sort = FALSE, all.x = TRUE, all.y = FALSE)  %>% # to make sure the ordering is matched
+    set_rownames(libnames) %>%
+    Biobase::AnnotatedDataFrame(data = ., varMetadata = data.frame('labelDescription' = colnames(.), row.names = colnames(.)))
+
+dmel.rnaseq.78B.5.57 <- ExpressionSet(assayData = gene.assayData,
                              phenoData = gene.phenoData,
                              experimentData = experimentData,
                              featureData = featureData,
@@ -112,7 +204,7 @@ counts = raw.table[, 3:ncol(raw.table)] %>%
     set_rownames(raw.table[,1])
 ```
 
-### Create `ExpressionSet`
+### Create full `ExpressionSet`
 
 #### Assay data
 
@@ -158,7 +250,71 @@ experimentData <- new("MIAME",
                       )
 ```
 
-#### Assembling an `ExpressionSet`
+#### Assembling the full `ExpressionSet`
+
+```{r}
+dmel.rnaseq.full <- ExpressionSet(assayData = gene.assayData,
+                             phenoData = gene.phenoData,
+                             experimentData = experimentData,
+                             featureData = featureData,
+                             annotation = 'FlyBase dmel-6.01'
+                             )
+```
+
+### Create `ExpressionSet` of selected samples
+
+Samples were included if the coverage is more than 3X, and percentage of mapped reads (to genome v6.01) is greater than 0.75.
+The included samples were splitted into 2 groups, one spiked with ERCC pool 78A, the other with ERCC pool 78B.
+
+#### ERCC pool 78A
+
+```{r}
+gene.assayData <- new.env()
+metadata = readRDS('samples.3X.78A.RDS')
+metadata$SampleId = metadata$Library_ID
+
+assign('exprs', counts[,metadata$SampleId], envir = gene.assayData) # exprs is required
+assign('count', counts[,metadata$SampleId], envir = gene.assayData)
+ExpressionSet(assayData = gene.assayData)
+
+libnames <- colnames(gene.assayData$exprs) %>% as.character()
+gene.phenoData <- data.frame('SampleId' = libnames) %>%
+    merge(y = metadata, by = 'SampleId', sort = FALSE, all.x = TRUE, all.y = FALSE)  %>% # to make sure the ordering is matched
+    set_rownames(libnames) %>%
+    Biobase::AnnotatedDataFrame(data = ., varMetadata = data.frame('labelDescription' = colnames(.), row.names = colnames(.)))
+
+dmel.rnaseq.78A <- ExpressionSet(assayData = gene.assayData,
+                             phenoData = gene.phenoData,
+                             experimentData = experimentData,
+                             featureData = featureData,
+                             annotation = 'FlyBase dmel-5.57'
+                             )
+```
+
+#### ERCC pool 78B
+
+```{r}
+gene.assayData <- new.env()
+metadata = readRDS('samples.3X.78B.RDS')
+metadata$SampleId = metadata$Library_ID
+
+assign('exprs', counts[,metadata$SampleId], envir = gene.assayData) # exprs is required
+assign('count', counts[,metadata$SampleId], envir = gene.assayData)
+ExpressionSet(assayData = gene.assayData)
+
+libnames <- colnames(gene.assayData$exprs) %>% as.character()
+gene.phenoData <- data.frame('SampleId' = libnames) %>%
+    merge(y = metadata, by = 'SampleId', sort = FALSE, all.x = TRUE, all.y = FALSE)  %>% # to make sure the ordering is matched
+    set_rownames(libnames) %>%
+    Biobase::AnnotatedDataFrame(data = ., varMetadata = data.frame('labelDescription' = colnames(.), row.names = colnames(.)))
+
+dmel.rnaseq.78B <- ExpressionSet(assayData = gene.assayData,
+                             phenoData = gene.phenoData,
+                             experimentData = experimentData,
+                             featureData = featureData,
+                             annotation = 'FlyBase dmel-5.57'
+                             )
+```
 
 ```{r}
 dmel.rnaseq <- ExpressionSet(assayData = gene.assayData,
@@ -172,6 +328,10 @@ dmel.rnaseq <- ExpressionSet(assayData = gene.assayData,
 ## Writing data sets
 
 ```{r,eval=FALSE}
-usethis::use_data(dmel.rnaseq.5.57,internal = FALSE, overwrite = TRUE)
-usethis::use_data(dmel.rnaseq,internal = FALSE, overwrite = TRUE)
+usethis::use_data(dmel.rnaseq.full.5.57,internal = FALSE, overwrite = TRUE)
+usethis::use_data(dmel.rnaseq.78A.5.57,internal = FALSE, overwrite = TRUE)
+usethis::use_data(dmel.rnaseq.78B.5.57,internal = FALSE, overwrite = TRUE)
+usethis::use_data(dmel.rnaseq.full,internal = FALSE, overwrite = TRUE)
+usethis::use_data(dmel.rnaseq.78A,internal = FALSE, overwrite = TRUE)
+usethis::use_data(dmel.rnaseq.78B,internal = FALSE, overwrite = TRUE)
 ```
