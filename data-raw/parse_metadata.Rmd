@@ -8,29 +8,32 @@ output: html_notebook
 ```{r setup, include=FALSE, echo=FALSE}
 library(magrittr)
 library(ggplot2)
-library(tidyverse)
 # Sys.setenv('DBDIR' = 'path/to/data/dir')
 options(stringsAsFactors = FALSE)
 knitr::opts_chunk$set(echo = TRUE)
 softfile = file.path(Sys.getenv('DBDIR'), 'GSE60314_family.soft')
+run.metafile = file.path(Sys.getenv('DBDIR'), 'run-summary.tsv')
 source('../R/utils.R')
 ```
 
-## Parse and process meta data
+## Metadata for samples
 
 ```{r}
 metadata = read.soft2dataframe(softfile, entryType = 'SAMPLE', idColumnName = 'SampleId')
 sample.annotation = gsub(pattern = '\\w+\\W+(\\w+)$', replacement = '\\1', metadata$Sample_title) %>%
     lapply(function(x) {
-        str_split(x, '_')[[1]]
+        stringr::str_split(x, '_')[[1]]
     }) %>%
     do.call(rbind, .) %>%
     set_colnames(c('Sex', 'Environment', 'BiologicalReplicate', "TechnicalReplicate")) %>%
     data.frame()
     
+# will be redudant when combining with the next data.frame
+sample.annotation$Sex <- NULL
+
 sample.meta = metadata$Sample_characteristics_ch1 %>%
     lapply(function(x) {
-        str_split(x, '\t') %>%
+        stringr::str_split(x, '\t') %>%
             sapply(function(y) { extract.keyvalue(y, separator = ': ') })
     }) %>%
     do.call(rbind, .) %>%
@@ -39,8 +42,205 @@ sample.meta = metadata$Sample_characteristics_ch1 %>%
     cbind(metadata[,'SampleId']) %>%
     set_names(c('Strain', 'DevelopmentalStage', 'Sex', 'Tissue', names(sample.annotation), 'SampleId')) # standardize column names
 ```
+
+## Metadata for sequencing runs
+
+```{r}
+runs.meta = data.table::fread(run.metafile)
+```
+
+
+### Total RNA vs total and mapped reads
+
+```{r}
+ggplot(runs.meta) +
+    geom_point(aes(x=RNA_Quantity_ug,y=Mapped_Reads_5.57))
+ggplot(runs.meta) +
+    geom_point(aes(x=RNA_Quantity_ug,y=Total_Reads))
+
+```
+### Genome coverage from total reads
+
+The average genome of D. melanogaster is 143.726 Megabases (https://www.ncbi.nlm.nih.gov/genome/47?genome_assembly_id=204923). The RNA-seq assays performed in this study is single-stranded 76bp protocol. The coverage is then calculated from total reads for each sequencing run.
+
+```{r}
+runs.meta$Coverage = runs.meta$Total_Reads*76 / 143726000
+```
+
+### Distribution of coverage
+
+```{r}
+ggplot(runs.meta) +
+    geom_histogram(aes(x=Coverage), binwidth = 1)
+ecdf(runs.meta$Coverage) %>%
+    plot(ylab = 'CDF', xlab = 'Coverage')
+```
+
+### Number of potential batches
+
+```{r}
+runs.meta[,c('Flow_Cell_ID', 'Lane')] %>%
+    table()
+    
+```
+
+
+
+### Percent mapped reads to different genome versions
+
+The newer version of _D. melanogaster_ genome (6.01) resulted in higher fraction of mapped reads, with the improvement up to 20% in some cases.
+
+```{r}
+runs.meta[,'Pcnt_Mapped_Reads_5.57'] = runs.meta[,'Mapped_Reads_5.57'] / runs.meta[,'Total_Reads']
+runs.meta[,'Pcnt_Mapped_Reads_6.01'] = runs.meta[,'Mapped_Reads_6.01'] / runs.meta[,'Total_Reads']
+ggplot(runs.meta) +
+    geom_point(aes(x=Pcnt_Mapped_Reads_5.57,y=Pcnt_Mapped_Reads_6.01, color = Total_Reads), shape = 4)
+    
+```
+
+### Percent mapped reads vs RNA quantity
+```{r}
+runs.meta[,c('RNA_Quantity_ug', 'Pcnt_Mapped_Reads_5.57', 'Pcnt_Mapped_Reads_6.01')] %>%
+    reshape2::melt(id.var = 'RNA_Quantity_ug') %>%
+    set_names(c('RNA_Quantity_ug', 'GenomeVersion', 'Percent_Mapped_Reads')) %>%
+    ggplot() +
+    geom_point(aes(x=RNA_Quantity_ug,y=Percent_Mapped_Reads,group=GenomeVersion,color=GenomeVersion), alpha=0.3,shape = 4)
+
+```
+
+### Distribution of percent mapped reads
+
+```{r}
+ggplot(runs.meta) +
+    geom_histogram(aes(x=Pcnt_Mapped_Reads_6.01), binwidth = 0.02)
+ecdf(runs.meta$Pcnt_Mapped_Reads_6.01) %>%
+    plot(ylab = 'CDF', xlab = 'Percent mapped reads on v6.01', main = 'Distribution of percent mapped reads')
+```
+
+### Sequencing runs per library (GSMxxx)
+
+One sample (library) may have multiple sequencing runs.
+
+```{r}
+sample.seq_runs = runs.meta[,c('Library_ID', 'Sequence_Run_ID')] %>%
+    dplyr::group_by(Library_ID) %>%
+    dplyr::count() %>%
+    set_names(c('Library_ID', 'Num_Sequencing_Runs'))
+```
+
+### Samples with multiple entries
+
+```{r}
+sample.seq_runs[sample.seq_runs$Num_Sequencing_Runs > 1, ] %>%
+    merge(runs.meta, by = 'Library_ID') %>%
+    `[`(TRUE, c('Library_ID', 'SRR_ID', 'Sequence_Run_ID', 'Mapped_Reads_5.57', 'Mapped_Reads_6.01', 'Total_Reads'))
+```
+
+```{r,fig.height=12,fig.width=8}
+p = sample.seq_runs[sample.seq_runs$Num_Sequencing_Runs > 1, ] %>%
+    merge(runs.meta, by = 'Library_ID') %>%
+    `[`(TRUE, c('Library_ID', 'Total_Reads', 'Pcnt_Mapped_Reads_6.01')) %>%
+    ggplot() +
+    geom_point(aes(x=Library_ID,y=Total_Reads,group=Library_ID, color=Pcnt_Mapped_Reads_6.01)) +
+    geom_line(aes(x=Library_ID,y=Total_Reads,group=Library_ID)) +
+    scale_y_log10() +
+    coord_flip()
+
+p
+
+```
+
+Library `GSM1470998` has very low percent mapped reads in all sequencing runs.
+
+
+```{r}
+runs.meta[runs.meta$Library_ID == 'GSM1470998',]
+```
+
+### Filtering for one sequencing run per library, using total mapped reads
+
+Keep only one sequencing run per library, choose one with largest total reads and percent mapped reads.
+
+```{r}
+one_run_per_sample = metadata$SampleId %>%
+    lapply(function(x) {
+        df = runs.meta[runs.meta$Library_ID == x,]
+        if (nrow(df) > 1) {
+            idx = order(df$Total_Reads, decreasing = TRUE)
+            df = df[idx,]
+        }
+        return(df[1,])
+    }) %>%
+    do.call(rbind, .)
+```
+
+### Filtering for one sequencing run per library, using percent mapped reads (only for reference)
+
+Keep only one sequencing run per library, choose one with largest percent mapped reads.
+
+```{r}
+one_run_per_sample.2 = metadata$SampleId %>%
+    lapply(function(x) {
+        df = runs.meta[runs.meta$Library_ID == x,]
+        if (nrow(df) > 1) {
+            idx.1 = order(df[['Total_Reads']], decreasing = TRUE)
+            idx.2 = order(df[['Pcnt_Mapped_Reads_6.01']], decreasing = TRUE)
+            if (any(idx.1 != idx.2)) {
+                message(paste("Different ordering at", x))
+            }
+            df = df[idx.2,]
+        }
+        return(df[1,])
+    }) %>%
+    do.call(rbind, .)
+```
+
+```{r}
+runs.meta[runs.meta$Library_ID %in% c('GSM1470911', 'GSM1470912', 'GSM1470914', 'GSM1470915'), c('Library_ID', 'Sequence_Run_ID', 'Pcnt_Mapped_Reads_5.57', 'Pcnt_Mapped_Reads_6.01', 'Total_Reads')]
+```
+
+### Removing low-coverage, low-mapping samples
+
+Keeping samples with at least 3X coverage and percent mapped reads > 0.75
+
+```{r}
+one_run_per_sample.3X = one_run_per_sample[(one_run_per_sample$Coverage > 3) & (one_run_per_sample$Pcnt_Mapped_Reads_6.01 > 0.75), ]
+one_run_per_sample.3X
+```
+
+
+
+#### ERCC pool 78A
+
+```{r}
+samples.3X.78A = one_run_per_sample.3X[one_run_per_sample.3X$ERCC_Pool == '78A', ]
+samples.3X.78A
+```
+
+#### ERCC pool 78B
+
+```{r}
+samples.3X.78B = one_run_per_sample.3X[one_run_per_sample.3X$ERCC_Pool == '78B', ]
+samples.3X.78B
+```
+
+### Number of replicates per genotype/environment/sex in the remaining samples
+
+```{r}
+samples.3X.78A[,c('DGRP_Number', 'Sex', 'Environment')] %>%
+    table()
+```
+
+```{r}
+samples.3X.78B[,c('DGRP_Number', 'Sex', 'Environment')] %>%
+    table()
+```
+
+## Write (sequencing run) metadata files
+
 ```{r,eval=FALSE}
-saveRDS(sample.meta, file = 'samples_metadata.RDS')
+saveRDS(samples.3X.78A, file = 'samples.3X.78A.RDS')
+saveRDS(samples.3X.78B, file = 'samples.3X.78B.RDS')
 ```
 
 
