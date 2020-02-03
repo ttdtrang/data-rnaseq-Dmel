@@ -1,4 +1,5 @@
 .Rproj.user
+.Rhistory
 *.Rproj
 data-raw/*gz
 data-raw/*html
