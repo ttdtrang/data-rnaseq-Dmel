@@ -22,16 +22,22 @@ The package includes 2 data sets resulted from alignment to 2 different versions
 For genome version 6.01
 
 ```R
-data(dmel.rnaseq)
+data(dmel.rnaseq.full)
 ```
 
 For genome version 5.57
 
 ```R
-data(dmel.rnaseq.5.57)
+data(dmel.rnaseq.full.5.57)
 ```
 
-All data sets
+To list all data sets available with the package
+
+```R
+data(package = 'data.rnaseq.Dmel')
+```
+
+The data sets included in the package are following
 
 ```
 |-- v 5.57
